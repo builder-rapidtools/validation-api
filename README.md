@@ -19,6 +19,10 @@ API-first validation service for structured data formats with deterministic vali
 Deterministic CSV validation with no persistent side effects.
 Designed for machine and automation use.
 
+## Security
+
+Report vulnerabilities to security@rapidtools.dev. See disclosure policy: https://directory.rapidtools.dev/security
+
 ## Notes
 
 - No UI
