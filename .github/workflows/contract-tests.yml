@@ -1,0 +1,33 @@
+name: Contract Tests
+
+  on:
+    push:
+      branches: [main]
+    pull_request:
+      branches: [main]
+
+  jobs:
+    contract-tests:
+      runs-on: ubuntu-latest
+
+      steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+
+        - name: Setup Node.js
+          uses: actions/setup-node@v4
+          with:
+            node-version: '20'
+            cache: 'npm'
+            cache-dependency-path: 'backend/package-lock.json'
+
+        - name: Install dependencies
+          working-directory: backend
+          run: npm install
+
+        - name: Run contract tests
+          working-directory: backend
+          env:
+            TEST_API_KEY: ${{ secrets.VALIDATION_API_KEY }}
+            TEST_BASE_URL: https://rapidtools-validation-api.jamesredwards89.workers.dev
+          run: npm test
