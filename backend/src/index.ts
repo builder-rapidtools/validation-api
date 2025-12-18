@@ -64,7 +64,7 @@ export default {
       if (method === 'GET' && path === '/health') {
         const response = jsonResponse({
           ok: true,
-          status: {
+          data: {
             service: 'rapidtools-validation',
             version: env.SERVICE_VERSION || '1.0.0',
           },
