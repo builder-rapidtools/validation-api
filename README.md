@@ -1,13 +1,18 @@
-# RapidTools Validation API (Runtime)
+# RapidTools Validation API
 
-This repository contains the deployed runtime implementation for the
-RapidTools Validation service.
+API-first validation service for structured data formats with deterministic validation and idempotent operations.
+
+## Links
+
+- **Canonical manifest**: https://validation.rapidtools.dev/manifest.json
+- **Directory entry**: https://directory.rapidtools.dev
+
+**The manifest is the canonical contract. This repository implements it.**
 
 ## Contract
 
-- Canonical contract: https://validation.rapidtools.dev/manifest.json
-- Directory entry: https://directory.rapidtools.dev
-- This runtime is expected to strictly match the published manifest.
+- Breaking changes require a versioned manifest update.
+- Runtime behavior must match manifest.
 
 ## Purpose
 
@@ -19,4 +24,3 @@ Designed for machine and automation use.
 - No UI
 - No SDK
 - No hidden behavior
-- Changes that affect behavior require a manifest update
