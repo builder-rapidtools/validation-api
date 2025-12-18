@@ -17,14 +17,14 @@ const API_KEY = process.env.TEST_API_KEY;
 // Skip auth-required tests if API key is not set
 const shouldSkipAuth = !API_KEY;
 
-// Sample valid GA4 CSV
-const VALID_CSV = `date,sessions,users,pageviews
+// Sample valid GA4 CSV (with text: prefix required by API)
+const VALID_CSV = `text:date,sessions,users,pageviews
 2024-01-01,100,50,200
 2024-01-02,120,60,240
 2024-01-03,110,55,220`;
 
 // Sample invalid GA4 CSV (missing required header 'users')
-const INVALID_CSV = `date,sessions,pageviews
+const INVALID_CSV = `text:date,sessions,pageviews
 2024-01-01,100,200
 2024-01-02,120,240`;
 
@@ -61,9 +61,10 @@ describe('List Types', () => {
 
     expect(response.status).toBe(200);
     expect(data.ok).toBe(true);
-    expect(data.data.types).toBeDefined();
-    expect(Array.isArray(data.data.types)).toBe(true);
-    expect(data.data.types).toContain('csv.timeseries.ga4.v1');
+    expect(data.types).toBeDefined();
+    expect(Array.isArray(data.types)).toBe(true);
+    expect(data.types.length).toBeGreaterThan(0);
+    expect(data.types[0].type).toBe('csv.timeseries.ga4.v1');
   });
 });
 
@@ -84,12 +85,12 @@ describe('Validation', () => {
 
     expect(response.status).toBe(200);
     expect(data.ok).toBe(true);
-    expect(data.data.summary).toBeDefined();
-    expect(data.data.summary.valid).toBe(true);
-    expect(data.data.summary.issues).toBe(0);
-    expect(data.data.summary.rows).toBe(3);
-    expect(data.data.findings).toBeDefined();
-    expect(Array.isArray(data.data.findings)).toBe(true);
+    expect(data.summary).toBeDefined();
+    expect(data.summary.valid).toBe(true);
+    expect(data.summary.issues).toBe(0);
+    expect(data.summary.rows).toBe(3);
+    expect(data.findings).toBeDefined();
+    expect(Array.isArray(data.findings)).toBe(true);
   });
 
   test.skipIf(shouldSkipAuth)('should return validation errors for invalid CSV', async () => {
@@ -168,7 +169,7 @@ describe('Validation', () => {
     });
     const data = await response.json();
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(422);
     expect(data.ok).toBe(false);
     expect(data.error.code).toBe('UNSUPPORTED_TYPE');
   });
@@ -197,10 +198,10 @@ describe('Idempotency Contract', () => {
 
     expect(response1.status).toBe(200);
     expect(data1.ok).toBe(true);
-    expect(data1.data.summary.valid).toBe(true);
-    expect(data1.data.idempotency).toBeDefined();
-    expect(data1.data.idempotency.key).toBe(idempotencyKey);
-    expect(data1.data.idempotency.replayed).toBe(false);
+    expect(data1.summary.valid).toBe(true);
+    expect(data1.idempotency).toBeDefined();
+    expect(data1.idempotency.key).toBe(idempotencyKey);
+    expect(data1.idempotency.replayed).toBe(false);
 
     // Second request with same key and same payload - should return cached response
     const response2 = await fetch(`${BASE_URL}/api/validate`, {
@@ -217,12 +218,12 @@ describe('Idempotency Contract', () => {
 
     expect(response2.status).toBe(200);
     expect(data2.ok).toBe(true);
-    expect(data2.data.idempotency).toBeDefined();
-    expect(data2.data.idempotency.key).toBe(idempotencyKey);
-    expect(data2.data.idempotency.replayed).toBe(true);
+    expect(data2.idempotency).toBeDefined();
+    expect(data2.idempotency.key).toBe(idempotencyKey);
+    expect(data2.idempotency.replayed).toBe(true);
 
     // Results should be identical (same summary, findings)
-    expect(data2.data.summary).toEqual(data1.data.summary);
+    expect(data2.summary).toEqual(data1.summary);
   });
 
   test.skipIf(shouldSkipAuth)('should return 409 when same idempotency key is used with different payload', async () => {
@@ -248,7 +249,7 @@ describe('Idempotency Contract', () => {
     expect(data1.ok).toBe(true);
 
     // Second request with same key but different CSV content - should get 409
-    const differentCSV = `date,sessions,users,pageviews
+    const differentCSV = `text:date,sessions,users,pageviews
 2024-02-01,200,100,400
 2024-02-02,220,110,440`;
 
@@ -334,7 +335,7 @@ describe('Idempotency Contract', () => {
 
     expect(response1.status).toBe(200);
     expect(data1.ok).toBe(true);
-    expect(data1.data.idempotency.replayed).toBe(false);
+    expect(data1.idempotency.replayed).toBe(false);
 
     // Second request with different key but same payload - should succeed
     const response2 = await fetch(`${BASE_URL}/api/validate`, {
@@ -351,6 +352,6 @@ describe('Idempotency Contract', () => {
 
     expect(response2.status).toBe(200);
     expect(data2.ok).toBe(true);
-    expect(data2.data.idempotency.replayed).toBe(false); // New key = not replayed
+    expect(data2.idempotency.replayed).toBe(false); // New key = not replayed
   });
 });

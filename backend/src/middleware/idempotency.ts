@@ -29,51 +29,46 @@ export async function checkIdempotency(
   requestId?: string
 ): Promise<ValidationResponse | null> {
   const apiKeyHash = await sha256(apiKey);
-  const kvKey = `idem:${apiKeyHash}:${idempotencyKey}:${fingerprint}`;
 
-  // Check if exact match exists
-  const stored = await env.IDEMPOTENCY_KV.get(kvKey, 'json');
-  if (stored) {
-    const metadata = stored as IdempotencyMetadata;
-    const response = metadata.response;
+  // First check if this idempotency key has been used before (stored fingerprint)
+  const fingerprintKey = `idem-fp:${apiKeyHash}:${idempotencyKey}`;
+  const storedFingerprint = await env.IDEMPOTENCY_KV.get(fingerprintKey, 'text');
 
-    // Add idempotency metadata to response
-    if (response.ok) {
-      response.idempotency = {
-        key: idempotencyKey,
-        replayed: true,
-      };
-    } else {
-      response.idempotency = {
-        key: idempotencyKey,
-        replayed: true,
-      };
+  if (storedFingerprint) {
+    // Idempotency key exists - check if fingerprint matches
+    if (storedFingerprint !== fingerprint) {
+      // Same key, different fingerprint = conflict
+      throw new Response(
+        JSON.stringify({
+          ok: false,
+          error: {
+            code: 'IDEMPOTENCY_KEY_REUSE_MISMATCH',
+            message: 'Idempotency key was already used with different request parameters',
+            ...(requestId && { request_id: requestId }),
+          },
+        }),
+        {
+          status: 409,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
     }
 
-    return response;
-  }
+    // Fingerprint matches - retrieve cached response
+    const kvKey = `idem:${apiKeyHash}:${idempotencyKey}:${fingerprint}`;
+    const stored = await env.IDEMPOTENCY_KV.get(kvKey, 'json');
+    if (stored) {
+      const metadata = stored as IdempotencyMetadata;
+      const response = metadata.response;
 
-  // Check if same idempotency key exists with different fingerprint
-  const listResult = await env.IDEMPOTENCY_KV.list({
-    prefix: `idem:${apiKeyHash}:${idempotencyKey}:`,
-  });
+      // Add idempotency metadata to response
+      response.idempotency = {
+        key: idempotencyKey,
+        replayed: true,
+      };
 
-  if (listResult.keys.length > 0) {
-    // Same idempotency key, different fingerprint
-    throw new Response(
-      JSON.stringify({
-        ok: false,
-        error: {
-          code: 'IDEMPOTENCY_KEY_REUSE_MISMATCH',
-          message: 'Idempotency key was already used with different request parameters',
-          ...(requestId && { request_id: requestId }),
-        },
-      }),
-      {
-        status: 409,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+      return response;
+    }
   }
 
   return null;
@@ -99,9 +94,18 @@ export async function storeIdempotentResponse(
     timestamp: Date.now(),
   };
 
+  // Store the response with the full key including fingerprint
   await env.IDEMPOTENCY_KV.put(
     kvKey,
     JSON.stringify(metadata),
+    { expirationTtl: IDEMPOTENCY_TTL_SECONDS }
+  );
+
+  // Also store the fingerprint separately for conflict detection
+  const fingerprintKey = `idem-fp:${apiKeyHash}:${idempotencyKey}`;
+  await env.IDEMPOTENCY_KV.put(
+    fingerprintKey,
+    fingerprint,
     { expirationTtl: IDEMPOTENCY_TTL_SECONDS }
   );
 }

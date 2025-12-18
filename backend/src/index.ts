@@ -134,7 +134,7 @@ export default {
         }
 
         const idempotencyKey = request.headers.get('Idempotency-Key');
-        const apiKey = (request as any).apiKey as string | undefined;
+        const apiKey = request.headers.get('x-api-key')?.trim();
 
         // No idempotency — validate and return
         if (!idempotencyKey || !apiKey) {
