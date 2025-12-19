@@ -23,6 +23,16 @@ Designed for machine and automation use.
 
 Report vulnerabilities to security@rapidtools.dev. See disclosure policy: https://directory.rapidtools.dev/security
 
+## Monitoring
+
+Monitor these endpoints:
+- `GET /health` - Service health check
+- `GET /api/types` - List validation types (requires API key)
+
+**Notes:**
+- Use a dedicated monitoring API key; do not use admin secret.
+- Alerts currently email-only.
+
 ## Notes
 
 - No UI
